@@ -1,0 +1,5 @@
+racistdetect_env/
+__pycache__/
+*.pyc
+*.npy
+*.csv
