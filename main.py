@@ -25,5 +25,8 @@ test_embeddings = get_bert_embeddings(test_df['clean_text'].tolist())
 np.save('train_embeddings.npy', train_embeddings)
 np.save('test_embeddings.npy', test_embeddings)
 
+# Generate contrastive pairs
+contrastive_df = generate_contrastive_pairs(train_df, num_pairs=2000)
+contrastive_df.to_csv('contrastive_pairs.csv', index=False)
 
 print("Data preparation completed. Check saved files.")
