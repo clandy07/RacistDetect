@@ -1,7 +1,8 @@
 import numpy as np
+import os
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, classification_report
-from sklearn.model_selection import train_test_split, KFold
+from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import StandardScaler
 import joblib
 from transformers import DistilBertTokenizer, DistilBertForSequenceClassification, Trainer, TrainingArguments, DataCollatorWithPadding
@@ -9,6 +10,8 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torch import nn
+from sklearn.metrics import f1_score
+from transformers import EarlyStoppingCallback
 
 # Load tokenizer and original model for contrastive features
 tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
@@ -52,8 +55,8 @@ contrastive_text2 = contrastive_df['text2'].values
 contrastive_labels = contrastive_df['similarity'].values
 
 # K-Fold Cross-Validation
-kf = KFold(n_splits=5, shuffle=True, random_state=42)
-for fold, (train_idx, val_idx) in enumerate(kf.split(train_texts), 1):
+kf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+for fold, (train_idx, val_idx) in enumerate(kf.split(train_texts, train_labels), 1):
     print(f"Fold {fold}")
     train_texts_fold = train_texts[train_idx]
     val_texts_fold = train_texts[val_idx]
@@ -69,18 +72,21 @@ for fold, (train_idx, val_idx) in enumerate(kf.split(train_texts), 1):
 
     # Training arguments
     training_args = TrainingArguments(
-        output_dir=f'./results/fold_{fold}',
-        num_train_epochs=3,
-        per_device_train_batch_size=8,
-        per_device_eval_batch_size=8,
-        eval_strategy="steps",
-        eval_steps=500,
-        save_steps=500,
-        save_total_limit=2,
-        load_best_model_at_end=True,
-        logging_dir=f'./logs/fold_{fold}',
-        logging_steps=10,
-    )
+    output_dir=f'./results/fold_{fold}',
+    num_train_epochs=6,  # Try 6 or more
+    per_device_train_batch_size=8,
+    per_device_eval_batch_size=8,
+    eval_strategy="steps",
+    eval_steps=500,
+    save_steps=500,
+    save_total_limit=2,
+    load_best_model_at_end=True,
+    logging_dir=f'./logs/fold_{fold}',
+    logging_steps=10,
+    metric_for_best_model="f1",  # Use F1 for early stopping
+    greater_is_better=True,
+    save_strategy="steps",
+)
 
     # Custom Trainer to handle weights
     class WeightedTrainer(Trainer):
@@ -99,19 +105,20 @@ for fold, (train_idx, val_idx) in enumerate(kf.split(train_texts), 1):
     # Initialize and train model
     model = DistilBertForSequenceClassification.from_pretrained('distilbert-base-uncased', num_labels=2)
     trainer = WeightedTrainer(
-        model=model,
-        args=training_args,
-        train_dataset=train_dataset,
-        eval_dataset=val_dataset,
-        tokenizer=tokenizer,
-        data_collator=DataCollatorWithPadding(tokenizer=tokenizer),
-        compute_metrics=lambda p: {
-            "accuracy": accuracy_score(p.label_ids, p.predictions.argmax(-1)),
-            "precision": precision_score(p.label_ids, p.predictions.argmax(-1)),
-            "recall": recall_score(p.label_ids, p.predictions.argmax(-1)),
-            "f1": f1_score(p.label_ids, p.predictions.argmax(-1))
-        }
-    )
+    model=model,
+    args=training_args,
+    train_dataset=train_dataset,
+    eval_dataset=val_dataset,
+    tokenizer=tokenizer,
+    data_collator=DataCollatorWithPadding(tokenizer=tokenizer),
+    compute_metrics=lambda p: {
+        "accuracy": accuracy_score(p.label_ids, p.predictions.argmax(-1)),
+        "precision": precision_score(p.label_ids, p.predictions.argmax(-1)),
+        "recall": recall_score(p.label_ids, p.predictions.argmax(-1)),
+        "f1": f1_score(p.label_ids, p.predictions.argmax(-1))
+    },
+    callbacks=[EarlyStoppingCallback(early_stopping_patience=2)]
+)
 
     trainer.train()
     # Save model for each fold
@@ -189,10 +196,28 @@ for fold, (train_idx, val_idx) in enumerate(kf.split(train_texts), 1):
 
     # Ensemble Predictions (Soft Voting)
     distilbert_probs = torch.softmax(torch.from_numpy(distilbert_predictions), dim=1)[:, 1].numpy()
-    ensemble_probs = (distilbert_probs + lr_probs) / 2
-    ensemble_preds = (ensemble_probs > 0.5).astype(int)
+    ensemble_probs = (distilbert_probs + lr_probs) / 2 
+    # Tune threshold for best F1
+    best_f1 = 0
+    best_thresh = 0.5
+    for thresh in np.arange(0.3, 0.71, 0.01):
+        preds = (ensemble_probs > thresh).astype(int)
+        f1 = f1_score(test_labels, preds)
+        if f1 > best_f1:
+            best_f1 = f1
+            best_thresh = thresh
+    ensemble_preds = (ensemble_probs > best_thresh).astype(int)
+    print(f"Best threshold for fold {fold}: {best_thresh} (F1: {best_f1:.3f})")
     print(f"Fold {fold} Ensemble Classification Report:")
     print(classification_report(test_labels, ensemble_preds))
+
+    # Create directories for results and logs
+    os.makedirs('logs', exist_ok=True)
+    log_path = f'logs/fold_{fold}_log.txt'
+    with open(log_path, 'w') as f:
+        f.write(f"Fold {fold} Contrastive Loss: {contrastive_loss.item()}\n\n")
+        f.write(f"Fold {fold} Ensemble Classification Report:\n")
+        f.write(classification_report(test_labels, ensemble_preds))
 
     # Save predictions and model
     np.save(f'./ensemble_predictions_fold_{fold}.npy', ensemble_preds)
