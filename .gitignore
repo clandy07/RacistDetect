@@ -7,3 +7,4 @@ logs/
 logistic_regression_model_fold_*.pkl
 distilbert_model_fold_*/
 results/
+.venv/
