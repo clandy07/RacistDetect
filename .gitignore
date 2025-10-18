@@ -1,4 +1,4 @@
-racistdetect_env/
+racist-detect_env/
 __pycache__/
 *.pyc
 *.npy

@@ -17,13 +17,13 @@ python -m venv racist-detect_env
 ### For Windows:
 
 ```bash
-venv\Scripts\activate
+racist-detect_env\Scripts\activate
 ```
 
 ### For MacOS/Linux:
 
 ```bash
-source venv/bin/activate
+source racist-detect_env/bin/activate
 ```
 
 ## 3. Install required dependencies
