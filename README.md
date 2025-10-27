@@ -46,3 +46,10 @@ python src/model.py
 
 ## 6. Check results and logs.
 
+## If you are having problems with SSL certificate verification issues, run this command:
+
+```bash
+/Applications/Python\ 3.13/Install\ Certificates.command
+```
+
+
