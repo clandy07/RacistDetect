@@ -3,6 +3,10 @@ import os
 from src.data_utils import load_and_split_data, compute_weights
 from src.preprocessing import preprocess_text, get_bert_embeddings
 from src.contrastive import generate_contrastive_pairs
+import nltk
+
+nltk.download('averaged_perceptron_tagger')
+nltk.download('averaged_perceptron_tagger_eng')
 
 # Paths
 data_path = os.path.join('data', 'RacismDetectionDataSet.csv')
