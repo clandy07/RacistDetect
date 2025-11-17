@@ -365,8 +365,8 @@ for fold, (train_idx, val_idx) in enumerate(kf.split(train_texts, train_labels),
     method_name, (distilbert_weight, lr_weight, method_f1) = best_method
     
     print(f"Fold {fold} Selected Method: {method_name}")
-    print(f"Fold {fold} Method Comparison - F1-based: {f1_method1:.3f}, Grid Search: {f1_method2:.3f}")
-    print(f"Fold {fold} Soft Voting Ensemble Weights - DistilBERT: {distilbert_weight:.3f}, LR: {lr_weight:.3f}")
+    print(f"Fold {fold} Method Comparison - F1-based: {f1_method1:.5f}, Grid Search: {f1_method2:.5f}")
+    print(f"Fold {fold} Soft Voting Ensemble Weights - DistilBERT: {distilbert_weight:.5f}, LR: {lr_weight:.5f}")
 
     # 7. Compute test probabilities for both models (calibrated)
     distilbert_test_probs = torch.softmax(torch.from_numpy(distilbert_predictions), dim=1)[:, 1].numpy()
@@ -391,16 +391,16 @@ for fold, (train_idx, val_idx) in enumerate(kf.split(train_texts, train_labels),
     distilbert_test_preds = (distilbert_test_probs_calibrated > best_db_threshold).astype(int)
     lr_test_preds = (lr_test_probs > best_lr_threshold).astype(int)
     
-    # Recalculate reports with optimized thresholds
-    distilbert_report = classification_report(test_labels, distilbert_test_preds)
-    lr_report = classification_report(test_labels, lr_test_preds)
-    ensemble_report = classification_report(test_labels, ensemble_preds)
+    # Recalculate reports with optimized thresholds (5 decimal places)
+    distilbert_report = classification_report(test_labels, distilbert_test_preds, digits=5)
+    lr_report = classification_report(test_labels, lr_test_preds, digits=5)
+    ensemble_report = classification_report(test_labels, ensemble_preds, digits=5)
 
-    print(f"Best ensemble threshold for fold {fold}: {best_ensemble_threshold:.3f} (Val F1: {best_val_f1:.3f}, Test F1: {ensemble_f1:.3f})")
-    print(f"Fold {fold} Temperature Scaling: {temperature:.3f}")
-    print(f"Fold {fold} Soft Voting Model Weights - DistilBERT: {distilbert_weight:.3f}, LR: {lr_weight:.3f}")
-    print(f"Fold {fold} Validation F1 Scores - DistilBERT: {distilbert_val_f1:.3f}, LR: {lr_val_f1:.3f}")
-    print(f"Fold {fold} Test F1 Scores - DistilBERT: {f1_score(test_labels, distilbert_test_preds):.3f}, LR: {f1_score(test_labels, lr_test_preds):.3f}, Ensemble: {ensemble_f1:.3f}")
+    print(f"Best ensemble threshold for fold {fold}: {best_ensemble_threshold:.5f} (Val F1: {best_val_f1:.5f}, Test F1: {ensemble_f1:.5f})")
+    print(f"Fold {fold} Temperature Scaling: {temperature:.5f}")
+    print(f"Fold {fold} Soft Voting Model Weights - DistilBERT: {distilbert_weight:.5f}, LR: {lr_weight:.5f}")
+    print(f"Fold {fold} Validation F1 Scores - DistilBERT: {distilbert_val_f1:.5f}, LR: {lr_val_f1:.5f}")
+    print(f"Fold {fold} Test F1 Scores - DistilBERT: {f1_score(test_labels, distilbert_test_preds):.5f}, LR: {f1_score(test_labels, lr_test_preds):.5f}, Ensemble: {ensemble_f1:.5f}")
     print(f"Fold {fold} DistilBERT Classification Report:")
     print(distilbert_report)
     print(f"Fold {fold} Logistic Regression Classification Report:")
@@ -419,18 +419,18 @@ for fold, (train_idx, val_idx) in enumerate(kf.split(train_texts, train_labels),
         f.write(f"=" * 60 + "\n\n")
         f.write(f"Ensemble Method: Soft Voting (Weighted Probability Combination)\n")
         f.write(f"Selected Weight Method: {method_name}\n")
-        f.write(f"Method Comparison - F1-based: {f1_method1:.3f}, Grid Search: {f1_method2:.3f}\n")
-        f.write(f"Temperature Scaling: {temperature:.3f}\n")
-        f.write(f"Soft Voting Ensemble Weights - DistilBERT: {distilbert_weight:.3f}, LR: {lr_weight:.3f}\n")
-        f.write(f"Best Thresholds - DistilBERT: {best_db_threshold:.3f}, LR: {best_lr_threshold:.3f}, Ensemble: {best_ensemble_threshold:.3f}\n\n")
+        f.write(f"Method Comparison - F1-based: {f1_method1:.5f}, Grid Search: {f1_method2:.5f}\n")
+        f.write(f"Temperature Scaling: {temperature:.5f}\n")
+        f.write(f"Soft Voting Ensemble Weights - DistilBERT: {distilbert_weight:.5f}, LR: {lr_weight:.5f}\n")
+        f.write(f"Best Thresholds - DistilBERT: {best_db_threshold:.5f}, LR: {best_lr_threshold:.5f}, Ensemble: {best_ensemble_threshold:.5f}\n\n")
         f.write(f"Validation F1 Scores:\n")
-        f.write(f"  DistilBERT: {distilbert_val_f1:.3f}\n")
-        f.write(f"  LR: {lr_val_f1:.3f}\n")
-        f.write(f"  Ensemble (Soft Voting): {best_val_f1:.3f}\n\n")
+        f.write(f"  DistilBERT: {distilbert_val_f1:.5f}\n")
+        f.write(f"  LR: {lr_val_f1:.5f}\n")
+        f.write(f"  Ensemble (Soft Voting): {best_val_f1:.5f}\n\n")
         f.write(f"Test F1 Scores:\n")
-        f.write(f"  DistilBERT: {f1_score(test_labels, distilbert_test_preds):.3f}\n")
-        f.write(f"  LR: {f1_score(test_labels, lr_test_preds):.3f}\n")
-        f.write(f"  Ensemble (Soft Voting): {ensemble_f1:.3f}\n\n")
+        f.write(f"  DistilBERT: {f1_score(test_labels, distilbert_test_preds):.5f}\n")
+        f.write(f"  LR: {f1_score(test_labels, lr_test_preds):.5f}\n")
+        f.write(f"  Ensemble (Soft Voting): {ensemble_f1:.5f}\n\n")
         f.write(f"DistilBERT Classification Report:\n")
         f.write(distilbert_report + "\n\n")
         f.write(f"Logistic Regression Classification Report:\n")
@@ -454,7 +454,7 @@ for fold, (train_idx, val_idx) in enumerate(kf.split(train_texts, train_labels),
         'lr_threshold': best_lr_threshold,
         'calibration': {
             'lr': 'CalibratedClassifierCV (sigmoid)',
-            'distilbert': f'Temperature Scaling (T={temperature:.3f})'
+            'distilbert': f'Temperature Scaling (T={temperature:.5f})'
         }
     }
     joblib.dump(ensemble_config, f'./ensemble_config_fold_{fold}.pkl')
